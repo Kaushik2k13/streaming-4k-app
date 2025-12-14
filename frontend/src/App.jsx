@@ -87,7 +87,7 @@ function App() {
         socketRef.current.disconnect();
       }
     };
-  }, []);
+  }, [isSharing]);
 
   // Initialize WebRTC service
   useEffect(() => {
