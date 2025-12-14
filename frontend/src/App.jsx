@@ -16,7 +16,8 @@ function App() {
 
   // Initialize socket and WebRTC
   useEffect(() => {
-    socketRef.current = io('http://localhost:3000');
+    socketRef.current = io('https://streaming-4k-app-prod.onrender.com');
+
 
     socketRef.current.on('connect', () => {
       console.log('✅ Connected to signaling server');
