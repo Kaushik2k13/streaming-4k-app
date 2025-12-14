@@ -1,5 +1,5 @@
 .app {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -10,51 +10,140 @@
 h1 {
   color: #333;
   text-align: center;
+  margin-bottom: 30px;
+}
+
+.join-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
 }
 
 .join-section {
   display: flex;
   gap: 10px;
-  margin: 20px 0;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
 }
 
 .join-section input {
-  padding: 10px 15px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 12px 16px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
   width: 300px;
-  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.join-section input:focus {
+  outline: none;
+  border-color: #2196F3;
 }
 
 .join-section button {
-  padding: 10px 20px;
+  padding: 12px 32px;
   background: #2196F3;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
+  transition: background 0.3s;
 }
 
 .join-section button:hover {
   background: #0b7dda;
 }
 
-.stream-section {
-  text-align: center;
+.stream-container {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.stream-section video {
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.video-wrapper {
+  position: relative;
+  background: #000;
   border-radius: 8px;
-  background: black;
-  max-width: 100%;
-  width: 100%;
-  margin: 20px 0;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
 }
 
-.stream-section p {
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-label {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.video-wrapper.local .video-label {
+  background: rgba(33, 150, 243, 0.8);
+}
+
+.room-info {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.room-info p {
+  margin: 8px 0;
   color: #666;
-  font-size: 14px;
+}
+
+.room-info strong {
+  color: #2196F3;
+  font-weight: 600;
+}
+
+.leave-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 12px 32px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+
+.leave-btn:hover {
+  background: #d32f2f;
+}
+
+@media (max-width: 768px) {
+  .video-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .join-section input {
+    width: 100%;
+    max-width: 300px;
+  }
 }
