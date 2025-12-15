@@ -19,17 +19,19 @@ const io = socketIo(server, {
 const PORT = process.env.PORT || 3000;
 
 // Track all rooms and their metadata
-const rooms = new Map();
+const rooms = new Map(); // {roomId: {peers, createdAt, isStreaming, passkey}}
 
-// Helper function to get room list
+
 function getRoomList() {
   return Array.from(rooms.entries()).map(([roomId, data]) => ({
     roomId,
     peerCount: data.peers.size,
     createdAt: data.createdAt,
-    isStreaming: data.isStreaming
+    isStreaming: data.isStreaming,
+    hasPasskey: !!data.passkey  // Just indicate if it has passkey, not the passkey itself
   }));
 }
+
 
 // Helper function to broadcast room list to all connected clients
 function broadcastRoomList() {
@@ -50,26 +52,39 @@ app.get('/api/rooms', (req, res) => {
 io.on('connection', (socket) => {
   console.log(`✅ User connected: ${socket.id}`);
 
-  // Send initial room list to newly connected user
-  const initialRoomList = getRoomList();
-  console.log(`📤 Sending ${initialRoomList.length} rooms to ${socket.id}`);
-  socket.emit('rooms-list', initialRoomList);
+  socket.on('join-room', (data) => {
+    const roomId = data.roomId;
+    const passkey = data.passkey || '';  // Get passkey from request
+    
+    console.log(`👤 ${socket.id} attempting to join room: ${roomId}`);
 
-  // User joins or creates a room
-  socket.on('join-room', (roomId) => {
-    console.log(`👤 ${socket.id} joining room: ${roomId}`);
-    socket.join(roomId);
-
-    // Create room if it doesn't exist
-    if (!rooms.has(roomId)) {
+    // Check if room exists
+    if (rooms.has(roomId)) {
+      const roomData = rooms.get(roomId);
+      
+      // Check passkey if room has one
+      if (roomData.passkey && roomData.passkey !== passkey) {
+        console.log(`❌ ${socket.id} wrong passkey for ${roomId}`);
+        socket.emit('join-room-error', {
+          error: 'Wrong passkey. Please enter the correct 4-digit code.'
+        });
+        return;  // Don't join
+      }
+      
+      console.log(`✅ ${socket.id} passkey correct for ${roomId}`);
+    } else {
+      // Creating new room - use provided passkey
       console.log(`🆕 Creating new room: ${roomId}`);
       rooms.set(roomId, {
         peers: new Set(),
         createdAt: new Date(),
-        isStreaming: false
+        isStreaming: false,
+        passkey: passkey || null  // Store passkey (null if not provided)
       });
     }
 
+    // Add user to room
+    socket.join(roomId);
     const roomData = rooms.get(roomId);
     roomData.peers.add(socket.id);
     console.log(`📍 Room ${roomId}: ${roomData.peers.size} peers`);
@@ -81,27 +96,45 @@ io.on('connection', (socket) => {
     // Notify others in room of new peer
     socket.broadcast.to(roomId).emit('new-peer', { peerId: socket.id });
 
-    // ⭐ CRITICAL: Broadcast updated room list to ALL connected clients
+    // Broadcast updated room list to ALL connected clients
     broadcastRoomList();
   });
 
   // User starts streaming
   socket.on('start-streaming', (roomId) => {
-    console.log(`🎥 ${socket.id} starting stream in ${roomId}`);
-    if (rooms.has(roomId)) {
-      rooms.get(roomId).isStreaming = true;
-      broadcastRoomList();
-    }
-  });
+  console.log(`🎥 ${socket.id} starting stream in ${roomId}`);
+  if (rooms.has(roomId)) {
+    rooms.get(roomId).isStreaming = true;
+    
+    // 🔴 NEW: Tell other users in room who is streaming
+    socket.broadcast.to(roomId).emit('user-streaming', {
+      streamerId: socket.id,
+      roomId: roomId
+    });
+    
+    console.log(`📡 Broadcasting: ${socket.id} is now streaming in ${roomId}`);
+    broadcastRoomList();
+  }
+});
+
 
   // User stops streaming
   socket.on('stop-streaming', (roomId) => {
-    console.log(`⛔ ${socket.id} stopping stream in ${roomId}`);
-    if (rooms.has(roomId)) {
-      rooms.get(roomId).isStreaming = false;
-      broadcastRoomList();
-    }
-  });
+  console.log(`⛔ ${socket.id} stopping stream in ${roomId}`);
+  if (rooms.has(roomId)) {
+    rooms.get(roomId).isStreaming = false;
+    
+    // 🔴 NEW: Tell other users streaming stopped
+    socket.broadcast.to(roomId).emit('user-stopped-streaming', {
+      streamerId: socket.id,
+      roomId: roomId
+    });
+    
+    console.log(`📡 Broadcasting: ${socket.id} stopped streaming in ${roomId}`);
+    broadcastRoomList();
+  }
+});
+
 
   // WebRTC signaling - offer
   socket.on('offer', (data) => {
@@ -125,8 +158,9 @@ io.on('connection', (socket) => {
   });
 
   // User disconnects
-  socket.on('disconnect', () => {
-    console.log(`❌ User disconnected: ${socket.id}`);
+  socket.on('disconnect', (reason) => {
+  console.log(`❌ User disconnected: ${socket.id}, reason: ${reason}`);
+
 
     // Remove from all rooms
     for (const [roomId, roomData] of rooms.entries()) {
@@ -145,7 +179,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    // ⭐ CRITICAL: Broadcast updated room list to all clients
+    // Broadcast updated room list to all clients
     broadcastRoomList();
   });
 });
